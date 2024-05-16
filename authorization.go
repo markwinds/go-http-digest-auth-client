@@ -81,7 +81,14 @@ func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization
 func (ah *authorization) computeResponse(dr *DigestRequest) (s string) {
 
 	kdSecret := ah.hash(ah.computeA1(dr))
-	kdData := fmt.Sprintf("%s:%08x:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, ah.hash(ah.computeA2(dr)))
+	a2 := ah.hash(ah.computeA2(dr))
+
+	kdData := ""
+	if strings.Contains(dr.Wa.Qop, "auth") {
+		kdData = fmt.Sprintf("%s:%08x:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, a2)
+	} else {
+		kdData = fmt.Sprintf("%s:%s", ah.Nonce, a2)
+	}
 
 	return ah.hash(fmt.Sprintf("%s:%s", kdSecret, kdData))
 }
@@ -104,13 +111,15 @@ func (ah *authorization) computeA1(dr *DigestRequest) string {
 
 func (ah *authorization) computeA2(dr *DigestRequest) string {
 
+	ah.Qop = dr.Wa.Qop
+
 	if strings.Contains(dr.Wa.Qop, "auth-int") {
-		ah.Qop = "auth-int"
+		//ah.Qop = "auth-int"
 		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.URI, ah.hash(dr.Body))
 	}
 
 	if dr.Wa.Qop == "auth" || dr.Wa.Qop == "" {
-		ah.Qop = "auth"
+		//ah.Qop = "auth"
 		return fmt.Sprintf("%s:%s", dr.Method, ah.URI)
 	}
 
